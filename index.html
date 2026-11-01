@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Mark the US states you've been to. Each state gets its own shade. Saved in your browser, no sign-up.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1218" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fifty Stars">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta property="og:title" content="Fifty Stars">
+<meta property="og:description" content="Mark the US states you've been to.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Fifty Stars</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@300;400;600;800;900&family=Overpass+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one quiet sheet of paper — big counter top-left, the map as the hero, a 50-tick strip, one settings button at the bottom. */
+:root{
+  --bg:#ffffff;
+  --ink:#131722;
+  --muted:#8a8f9c;
+  --land:#eceef2;
+  --land-hover:#dfe2e8;
+  --line:#e6e8ee;
+  --sheet:#ffffff;
+  --scrim:rgba(19,23,34,.28);
+  --focus:#2f6fdb;
+  --danger:#c2402c;
+  --f-display:"Overpass","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-mono:"Overpass Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1218;--ink:#eef0f4;--muted:#7d8494;--land:#1d222c;--land-hover:#272d39;--line:#232935;--sheet:#161a22;--scrim:rgba(0,0,0,.55);--focus:#7fa8ff;--danger:#ff7a63;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1218;--ink:#eef0f4;--muted:#7d8494;--land:#1d222c;--land-hover:#272d39;--line:#232935;--sheet:#161a22;--scrim:rgba(0,0,0,.55);--focus:#7fa8ff;--danger:#ff7a63;color-scheme:dark}
+
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-display);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;padding-block:clamp(20px,5vw,56px) 28px;display:flex;flex-direction:column;gap:clamp(14px,2.4vw,26px)}
+
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{margin:6px 0 0;font-weight:800;font-size:clamp(22px,3.4vw,34px);letter-spacing:-.01em;text-wrap:balance;line-height:1.05}
+.count{display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums;line-height:.8}
+.count b{font-weight:900;font-size:clamp(64px,12vw,128px);letter-spacing:-.04em}
+.count span{font-weight:300;font-size:clamp(26px,4.4vw,46px);color:var(--muted)}
+.pct{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right;margin-top:8px;font-variant-numeric:tabular-nums}
+
+.map{position:relative;width:100%}
+.map svg{display:block;width:100%;height:auto;overflow:visible}
+.st{fill:var(--land);stroke:var(--bg);stroke-width:1.1;stroke-linejoin:round;cursor:pointer;transition:fill .45s ease}
+.st:hover{fill:var(--land-hover)}
+.st.on:hover{filter:brightness(1.06) saturate(1.05)}
+.st:focus{outline:none}
+.st:focus-visible{stroke:var(--focus);stroke-width:2.2}
+.lbl{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.ripple{fill:none;stroke-width:2;pointer-events:none}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;font-weight:600;padding:5px 8px 3px;border-radius:6px;white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));opacity:0;transition:opacity .12s}
+.tip.show{opacity:1}
+.status{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center;padding:80px 0}
+
+.ticks{display:flex;gap:3px;height:22px}
+.ticks i{flex:1;border-radius:2px;background:var(--land);transition:background .45s ease,transform .3s ease}
+.ticks i.on{transform:scaleY(1)}
+.legend{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:-14px}
+.visited{font-size:13px;line-height:1.7;color:var(--muted);max-width:80ch}
+.visited strong{color:var(--ink);font-weight:600}
+
+footer{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding-top:6px;transition:opacity .25s}
+.btn[aria-busy=true]{opacity:.55;pointer-events:none}
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:var(--ink);color:var(--bg);font:600 13px/1.3 var(--f-display);padding:10px 14px 8px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30;max-width:calc(100vw - 32px);text-align:center;overflow-wrap:anywhere}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+body.clean footer{opacity:0}
+body.clean footer:hover,body.clean footer:focus-within{opacity:1}
+.btn{font:600 13px/1 var(--f-display);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:10px 16px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--muted)}
+.btn:focus-visible,.chip:focus-visible,.sw:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn svg{width:15px;height:15px}
+.btn.solid{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.warn{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+
+/* settings sheet */
+.scrim{position:fixed;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--sheet);border-radius:18px 18px 0 0;
+  box-shadow:0 -12px 40px rgba(0,0,0,.12);max-height:82vh;overflow:auto;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.8,.2,1);
+  padding:18px max(18px,env(safe-area-inset-right,0px)) calc(22px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+body.open .scrim{opacity:1;pointer-events:auto}
+body.open .sheet{transform:none}
+.sheet-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.sheet h2{margin:0;font-size:18px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec>label,.sec>.k{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+input[type=text],textarea{font:400 15px/1.4 var(--f-display);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 12px 8px;width:100%;box-sizing:border-box}
+textarea{font-family:var(--f-mono);font-size:12px;min-height:84px;resize:vertical}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.sw{border:1px solid var(--line);border-radius:12px;background:transparent;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;color:var(--ink);font:600 12px/1 var(--f-display)}
+.sw[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.sw i{display:block;height:22px;border-radius:6px}
+.toggles{display:flex;flex-wrap:wrap;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 12px/1 var(--f-display);border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:8px 11px 6px;cursor:pointer}
+.chips .chip[aria-pressed=true]{color:#fff;border-color:transparent}
+.toggles .chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.note{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="banner" id="banner" hidden>
+    <span>You're looking at a shared map. Changes here aren't saved.</span>
+    <span class="row">
+      <button class="btn solid" id="adoptShared" type="button">Save as my map</button>
+      <button class="btn" id="openMine" type="button">Open my map</button>
+    </span>
+  </div>
+  <header>
+    <div>
+      <div class="eyebrow">United States · visited</div>
+      <h1 id="title">States I've been to</h1>
+    </div>
+    <div>
+      <div class="count" aria-live="polite"><b id="n">0</b><span>/<span id="total">50</span></span></div>
+      <div class="pct" id="pct">0%</div>
+    </div>
+  </header>
+
+  <div class="map" id="map"><div class="status" id="status">Loading map…</div><div class="tip" id="tip"></div></div>
+
+  <div>
+    <div class="ticks" id="ticks" aria-hidden="true"></div>
+  </div>
+  <div class="legend" aria-hidden="true"><span>West</span><span>East</span></div>
+  <p class="visited" id="list"></p>
+
+  <footer>
+    <button class="btn" id="shareLink" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>
+      Share link
+    </button>
+    <button class="btn" id="shareImage" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 15.5l4.5-4 4 3.5 3-2.5 5.5 4.5"/><circle cx="15.5" cy="9.5" r="1.5"/></svg>
+      Share image
+    </button>
+    <button class="btn" id="openSettings" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      Settings
+    </button>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="sheet-in">
+    <h2>Settings <button class="btn" id="closeSettings" type="button">Done</button></h2>
+
+    <div class="sec">
+      <label for="titleInput">Title</label>
+      <input type="text" id="titleInput" maxlength="60" placeholder="States I've been to">
+    </div>
+
+    <div class="sec">
+      <div class="k">Palette</div>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="sec">
+      <div class="k">Theme</div>
+      <div class="toggles" id="themes" role="group" aria-label="Theme">
+        <button class="chip" type="button" data-theme-choice="auto" aria-pressed="true">Match system</button>
+        <button class="chip" type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button class="chip" type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="k">Display</div>
+      <div class="toggles">
+        <button class="chip" id="tLabels" type="button" aria-pressed="true">State codes</button>
+        <button class="chip" id="tDC" type="button" aria-pressed="false">Count D.C.</button>
+        <button class="chip" id="tList" type="button" aria-pressed="true">List under map</button>
+        <button class="chip" id="tClean" type="button" aria-pressed="false">Screenshot mode</button>
+      </div>
+      <div class="note">Screenshot mode hides the Settings button. Hover or tap the bottom of the page to bring it back.</div>
+    </div>
+
+    <div class="sec">
+      <div class="k">States</div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="sec">
+      <div class="k">Backup</div>
+      <div class="row">
+        <button class="btn" id="copyBtn" type="button">Copy backup</button>
+        <button class="btn" id="restoreBtn" type="button">Restore from text</button>
+        <span class="note" id="dataNote"></span>
+      </div>
+      <textarea id="backup" placeholder='Paste a backup here, e.g. {"visited":["WA","OR","CA"]}' spellcheck="false"></textarea>
+      <div class="row">
+        <button class="btn warn" id="resetBtn" type="button">Clear map</button>
+        <button class="btn warn" id="resetYes" type="button" hidden>Yes, clear everything</button>
+        <button class="btn" id="resetNo" type="button" hidden>Keep</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.20/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.usa.min.js"></script>
+<script>
+(function(){
+"use strict";
+var STATES=[["AL","Alabama",1],["AK","Alaska",2],["AZ","Arizona",4],["AR","Arkansas",5],["CA","California",6],["CO","Colorado",8],["CT","Connecticut",9],["DE","Delaware",10],["DC","District of Columbia",11],["FL","Florida",12],["GA","Georgia",13],["HI","Hawaii",15],["ID","Idaho",16],["IL","Illinois",17],["IN","Indiana",18],["IA","Iowa",19],["KS","Kansas",20],["KY","Kentucky",21],["LA","Louisiana",22],["ME","Maine",23],["MD","Maryland",24],["MA","Massachusetts",25],["MI","Michigan",26],["MN","Minnesota",27],["MS","Mississippi",28],["MO","Missouri",29],["MT","Montana",30],["NE","Nebraska",31],["NV","Nevada",32],["NH","New Hampshire",33],["NJ","New Jersey",34],["NM","New Mexico",35],["NY","New York",36],["NC","North Carolina",37],["ND","North Dakota",38],["OH","Ohio",39],["OK","Oklahoma",40],["OR","Oregon",41],["PA","Pennsylvania",42],["RI","Rhode Island",44],["SC","South Carolina",45],["SD","South Dakota",46],["TN","Tennessee",47],["TX","Texas",48],["UT","Utah",49],["VT","Vermont",50],["VA","Virginia",51],["WA","Washington",53],["WV","West Virginia",54],["WI","Wisconsin",55],["WY","Wyoming",56]];
+var NAME={},BYFIPS={};STATES.forEach(function(s){NAME[s[0]]=s[1];BYFIPS[s[2]]=s[0];});
+
+var PALETTES={
+  mesa:{name:"Mesa",stops:["#2f5d9e","#4aa3a2","#e9b949","#e2725b","#b0457a"]},
+  pacific:{name:"Pacific",stops:["#123c8c","#2b7bba","#2fa4a0","#5cc78f","#a6dc6b"]},
+  ember:{name:"Ember",stops:["#7a1f2b","#c8442d","#ef8a37","#f2b84b","#9aa84a"]},
+  bloom:{name:"Bloom",stops:["#5b3fa6","#9b5fc0","#e07bb0","#f4a28c","#f6c96b"]},
+  slate:{name:"Slate",stops:["#1f2a3d","#3b4d6b","#5f7697","#8aa0bd"]},
+  confetti:{name:"Confetti",stops:null}
+};
+
+var KEY="fifty-stars:v1";
+var DEFAULTS={visited:[],palette:"mesa",labels:true,dc:false,list:true,clean:false,title:"",theme:"auto"};
+// Fields that describe the map itself travel in the link; the rest are this viewer's display preferences.
+var SHARED_FIELDS=["visited","palette","title","dc"];
+function cleanCodes(a){return (Array.isArray(a)?a:[]).map(function(c){return String(c).toUpperCase();}).filter(function(c,i,arr){return NAME[c]&&arr.indexOf(c)===i;});}
+function normalize(s){if(["auto","light","dark"].indexOf(s.theme)<0)s.theme="auto";if(!PALETTES[s.palette])s.palette="mesa";s.visited=cleanCodes(s.visited);s.title=typeof s.title==="string"?s.title.slice(0,60):"";return s;}
+function loadLocal(){
+  try{var raw=localStorage.getItem(KEY);if(!raw)return null;var p=JSON.parse(raw);if(!p||typeof p!=="object")return null;
+    var s=Object.assign({},DEFAULTS);Object.keys(DEFAULTS).forEach(function(k){if(k in p)s[k]=p[k];});return normalize(s);}catch(e){return null;}
+}
+// Link format: #v=WA.OR.CA&p=mesa&t=My%20trips&dc=1
+function parseHash(){
+  var h=location.hash.replace(/^#/,"");if(!h||h.indexOf("v=")<0)return null;
+  try{
+    var q=new URLSearchParams(h),v=q.get("v")||"";
+    var out={visited:cleanCodes(v?v.split(/[.,]/):[])};
+    if(q.has("p"))out.palette=q.get("p");
+    out.title=q.get("t")||"";
+    out.dc=q.get("dc")==="1";
+    return out;
+  }catch(e){return null;}
+}
+function hashFor(s){
+  var parts=["v="+s.visited.slice().sort().join(".")];
+  if(s.palette!=="mesa")parts.push("p="+encodeURIComponent(s.palette));
+  if((s.title||"").trim())parts.push("t="+encodeURIComponent(s.title.trim()));
+  if(s.dc)parts.push("dc=1");
+  return "#"+parts.join("&");
+}
+function sameSet(a,b){if(a.length!==b.length)return false;var s=a.slice().sort().join();return s===b.slice().sort().join();}
+function sameMap(a,b){return sameSet(a.visited,b.visited)&&a.palette===b.palette&&(a.title||"")===(b.title||"")&&!!a.dc===!!b.dc;}
+
+var state,shared=false,lastHash="";
+function boot(){
+  var local=loadLocal(),fromHash=parseHash();
+  state=Object.assign({},DEFAULTS,local||{});
+  shared=false;
+  if(fromHash){
+    var candidate=normalize(Object.assign({},state,fromHash));
+    if(!local||!local.visited.length||sameMap(local,candidate)){state=candidate;persist();}
+    else{state=candidate;shared=true;}
+  }
+  writeHash();
+}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function writeHash(){
+  var h=hashFor(state);lastHash=h;
+  if(location.hash===h)return;
+  try{history.replaceState(null,"",location.pathname+location.search+h);}catch(e){}
+}
+function save(){if(!shared)persist();writeHash();}
+function shareUrl(){return location.href.split("#")[0]+hashFor(state);}
+boot();
+function isOn(c){return state.visited.indexOf(c)>=0;}
+
+function hash(s,seed){var h=2166136261^seed;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return ((h>>>0)%10000)/10000;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+var W=975,H=610;
+var proj=d3.geo.albersUsa().scale(1300).translate([W/2,H/2]);
+var path=d3.geo.path().projection(proj);
+var mapEl=document.getElementById("map"),tip=document.getElementById("tip");
+var feats=[],T={}; // T: code -> {t, cx, cy, area}
+
+function colorFor(code){
+  var info=T[code];if(!info)return "#999";
+  var pal=PALETTES[state.palette];
+  if(!pal.stops){var hh=(info.t*300+hash(code,7)*120)%360;return d3.hsl(hh,.62,.58+(hash(code,3)-.5)*.12).toString();}
+  var t=clamp(info.t+(hash(code,1)-.5)*.14,0,1);
+  var sc=d3.scale.linear().domain(pal.stops.map(function(_,i){return i/(pal.stops.length-1);})).range(pal.stops).interpolate(d3.interpolateLab);
+  var c=d3.hsl(sc(t));c.l=clamp(c.l+(hash(code,2)-.5)*.1,.18,.82);c.s=clamp(c.s+(hash(code,5)-.5)*.1,0,1);
+  return c.toString();
+}
+function inkOn(hex){var c=d3.rgb(hex);var y=(c.r*299+c.g*587+c.b*114)/1000;return y>150?"rgba(19,23,34,.78)":"rgba(255,255,255,.92)";}
+
+function getTopo(){
+  var D=window.Datamap||window.Datamaps;
+  if(D&&D.prototype){
+    var topo=D.prototype.usaTopo;
+    if(!topo){Object.keys(D.prototype).some(function(k){if(/topo$/i.test(k)&&/usa/i.test(k)){topo=D.prototype[k];return true;}});}
+    if(topo&&topo.objects){
+      var key=Object.keys(topo.objects)[0];
+      return Promise.resolve(topojson.feature(topo,topo.objects[key]).features.map(function(f){return {code:String(f.id).toUpperCase(),geo:f};}));
+    }
+  }
+  return fetch("https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json").then(function(r){return r.json();}).then(function(topo){
+    return topojson.feature(topo,topo.objects.states).features.map(function(f){return {code:BYFIPS[+f.id],geo:f};});
+  });
+}
+
+var svg,gStates,gLabels,gFx;
+function build(list){
+  feats=list.filter(function(f){return NAME[f.code];});
+  if(!feats.length)throw new Error("no features");
+  var xs=[];
+  feats.forEach(function(f){var c=path.centroid(f.geo);T[f.code]={cx:c[0],cy:c[1],area:path.area(f.geo)};if(f.code!=="AK"&&f.code!=="HI")xs.push(c[0]);});
+  var x0=d3.min(xs),x1=d3.max(xs);
+  feats.forEach(function(f){var i=T[f.code];
+    // Alaska and Hawaii sit in the inset corner; place them at the Pacific end of the gradient.
+    var x=f.code==="AK"?x0-30:f.code==="HI"?x0-10:i.cx;
+    i.t=clamp((x-x0)/(x1-x0),0,1);});
+  document.getElementById("status").remove();
+  svg=d3.select(mapEl).insert("svg",".tip").attr("viewBox","0 0 "+W+" "+H).attr("role","group").attr("aria-label","Map of US states. Select a state to mark it visited.");
+  gStates=svg.append("g");gFx=svg.append("g");gLabels=svg.append("g");
+  gStates.selectAll("path").data(feats).enter().append("path")
+    .attr("class","st").attr("d",function(d){return path(d.geo);})
+    .attr("tabindex",0).attr("role","button")
+    .attr("aria-label",function(d){return NAME[d.code];})
+    .on("click",function(d){toggle(d.code,true);})
+    .on("keydown",function(d){var e=d3.event;if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(d.code,true);}})
+    .on("mousemove",function(d){var r=mapEl.getBoundingClientRect(),e=d3.event;tip.textContent=NAME[d.code]+(isOn(d.code)?" ✓":"");tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.classList.add("show");})
+    .on("mouseleave",function(){tip.classList.remove("show");});
+  gLabels.selectAll("text").data(feats.filter(function(d){return T[d.code].area>900;})).enter().append("text")
+    .attr("class","lbl").attr("x",function(d){return T[d.code].cx+(d.code==="FL"?14:d.code==="LA"?-10:d.code==="MI"?12:0);})
+    .attr("y",function(d){return T[d.code].cy+(d.code==="MI"?18:0);}).text(function(d){return d.code;});
+  render();
+}
+
+function ripple(code){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  var i=T[code],col=colorFor(code);
+  gFx.append("circle").attr("class","ripple").attr("cx",i.cx).attr("cy",i.cy).attr("r",4).style("stroke",col).style("opacity",.9)
+    .transition().duration(700).ease("cubic-out").attr("r",46).style("opacity",0).remove();
+}
+
+function toggle(code,fx){
+  var k=state.visited.indexOf(code);
+  if(k>=0)state.visited.splice(k,1);else{state.visited.push(code);if(fx)ripple(code);}
+  save();render();
+}
+
+function codesInScope(){return STATES.map(function(s){return s[0];}).filter(function(c){return state.dc||c!=="DC";});}
+
+// Theme: "auto" leaves whatever the host or system decides; light/dark pin it.
+var hostTheme=document.documentElement.getAttribute("data-theme");
+function applyTheme(){
+  var root=document.documentElement,t=state.theme;
+  if(t==="light"||t==="dark")root.setAttribute("data-theme",t);
+  else if(hostTheme)root.setAttribute("data-theme",hostTheme);
+  else root.removeAttribute("data-theme");
+  var dark=t==="dark"||(t!=="light"&&(root.getAttribute("data-theme")==="dark"||(!root.hasAttribute("data-theme")&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)));
+  var metas=document.querySelectorAll('meta[name="theme-color"]');
+  for(var i=0;i<metas.length;i++){
+    if(t==="auto"){metas[i].content=/dark/.test(metas[i].media)?"#0f1218":"#ffffff";}
+    else metas[i].content=dark?"#0f1218":"#ffffff";
+  }
+}
+function render(){
+  applyTheme();
+  var scope=codesInScope();
+  var n=state.visited.filter(function(c){return scope.indexOf(c)>=0;}).length,total=scope.length;
+  document.getElementById("n").textContent=n;
+  document.getElementById("total").textContent=total;
+  document.getElementById("pct").textContent=Math.round(n/total*100)+"% of the map";
+  var title=(state.title||"").trim()||"States I've been to";
+  document.getElementById("title").textContent=title;
+  document.title=title;
+  document.body.classList.toggle("clean",!!state.clean);
+  document.getElementById("banner").hidden=!shared;
+
+  if(gStates){
+    gStates.selectAll("path").classed("on",function(d){return isOn(d.code);})
+      .style("fill",function(d){return isOn(d.code)?colorFor(d.code):null;})
+      .attr("aria-pressed",function(d){return isOn(d.code)?"true":"false";});
+    gLabels.style("display",state.labels?null:"none").selectAll("text")
+      .style("fill",function(d){return isOn(d.code)?inkOn(colorFor(d.code)):"var(--muted)";})
+      .style("opacity",function(d){return isOn(d.code)?1:.55;});
+  }
+
+  var order=scope.filter(function(c){return T[c];}).sort(function(a,b){return T[a].t-T[b].t||T[a].cx-T[b].cx;});
+  var tk=d3.select("#ticks").selectAll("i").data(order,function(d){return d;});
+  tk.enter().append("i");tk.exit().remove();tk.order();
+  tk.classed("on",isOn).style("background",function(d){return isOn(d)?colorFor(d):null;}).attr("title",function(d){return NAME[d];});
+
+  var names=state.visited.filter(function(c){return scope.indexOf(c)>=0;}).map(function(c){return NAME[c];}).sort();
+  var list=document.getElementById("list");
+  list.hidden=!state.list;
+  list.innerHTML=names.length?"<strong>Visited:</strong> "+names.join(", "):"Click any state to mark it. Your map is saved in this browser.";
+
+  // settings UI
+  d3.selectAll("#chips .chip").attr("aria-pressed",function(){return isOn(this.dataset.code)?"true":"false";})
+    .style("background",function(){return isOn(this.dataset.code)?colorFor(this.dataset.code):null;})
+    .style("color",function(){return isOn(this.dataset.code)?inkOn(colorFor(this.dataset.code)):null;});
+  d3.selectAll("#themes .chip").attr("aria-pressed",function(){return this.getAttribute("data-theme-choice")===(state.theme||"auto")?"true":"false";});
+  d3.selectAll("#swatches .sw").attr("aria-pressed",function(){return this.dataset.p===state.palette?"true":"false";});
+  [["tLabels","labels"],["tDC","dc"],["tList","list"],["tClean","clean"]].forEach(function(p){document.getElementById(p[0]).setAttribute("aria-pressed",state[p[1]]?"true":"false");});
+}
+
+// settings sheet
+var body=document.body;
+function openSheet(){body.classList.add("open");document.getElementById("titleInput").value=state.title||"";setTimeout(function(){document.getElementById("closeSettings").focus();},50);}
+function closeSheet(){body.classList.remove("open");document.getElementById("openSettings").focus();}
+document.getElementById("openSettings").onclick=openSheet;
+document.getElementById("closeSettings").onclick=closeSheet;
+document.getElementById("scrim").onclick=closeSheet;
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&body.classList.contains("open"))closeSheet();});
+document.getElementById("titleInput").addEventListener("input",function(e){state.title=e.target.value;save();render();});
+
+var sw=document.getElementById("swatches");
+Object.keys(PALETTES).forEach(function(k){
+  var p=PALETTES[k],b=document.createElement("button");b.type="button";b.className="sw";b.dataset.p=k;
+  var grad=p.stops?"linear-gradient(90deg,"+p.stops.join(",")+")":"linear-gradient(90deg,#e45b5b,#e9b949,#5cc78f,#3d8fd6,#9b5fc0,#e07bb0)";
+  b.innerHTML='<i style="background:'+grad+'"></i>'+p.name;
+  b.onclick=function(){state.palette=k;save();render();};
+  sw.appendChild(b);
+});
+var chips=document.getElementById("chips");
+STATES.forEach(function(s){var b=document.createElement("button");b.type="button";b.className="chip";b.dataset.code=s[0];b.textContent=s[1];b.onclick=function(){toggle(s[0],false);};chips.appendChild(b);});
+d3.selectAll("#themes .chip").on("click",function(){state.theme=this.getAttribute("data-theme-choice");save();render();});
+[["tLabels","labels"],["tDC","dc"],["tList","list"],["tClean","clean"]].forEach(function(p){document.getElementById(p[0]).onclick=function(){state[p[1]]=!state[p[1]];save();render();};});
+
+var note=document.getElementById("dataNote");
+function flash(msg){note.textContent=msg;clearTimeout(flash.t);flash.t=setTimeout(function(){note.textContent="";},2600);}
+document.getElementById("copyBtn").onclick=function(){
+  var txt=JSON.stringify({visited:state.visited.slice().sort(),palette:state.palette,title:state.title||""});
+  var ta=document.getElementById("backup");ta.value=txt;
+  try{navigator.clipboard.writeText(txt).then(function(){flash("Copied");},function(){ta.select();flash("Select and copy the text below");});}
+  catch(e){ta.select();flash("Select and copy the text below");}
+};
+document.getElementById("restoreBtn").onclick=function(){
+  try{
+    var p=JSON.parse(document.getElementById("backup").value);
+    var v=Array.isArray(p)?p:p.visited;if(!Array.isArray(v))throw 0;
+    state.visited=v.map(function(c){return String(c).toUpperCase();}).filter(function(c,i,a){return NAME[c]&&a.indexOf(c)===i;});
+    if(p.palette&&PALETTES[p.palette])state.palette=p.palette;
+    if(typeof p.title==="string")state.title=p.title;
+    save();render();flash("Restored "+state.visited.length+" states");
+  }catch(e){flash("That text isn't a backup. Paste the JSON from Copy backup.");}
+};
+var rY=document.getElementById("resetYes"),rN=document.getElementById("resetNo"),rB=document.getElementById("resetBtn");
+rB.onclick=function(){rB.hidden=true;rY.hidden=false;rN.hidden=false;};
+rN.onclick=function(){rB.hidden=false;rY.hidden=true;rN.hidden=true;};
+rY.onclick=function(){state.visited=[];save();render();rN.onclick();flash("Map cleared");};
+
+// shared links
+document.getElementById("adoptShared").onclick=function(){shared=false;persist();render();toast("Saved as your map");};
+document.getElementById("openMine").onclick=function(){
+  state=Object.assign({},DEFAULTS,loadLocal()||{});shared=false;writeHash();render();
+};
+window.addEventListener("hashchange",function(){if(location.hash===lastHash)return;boot();render();});
+
+var toastEl=document.getElementById("toast");
+function toast(msg){toastEl.textContent=msg;toastEl.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(function(){toastEl.classList.remove("show");},2600);}
+function isAbort(e){return e&&e.name==="AbortError";}
+
+document.getElementById("shareLink").onclick=function(){
+  var url=shareUrl(),title=(state.title||"").trim()||"States I've been to";
+  if(navigator.share){
+    navigator.share({title:title,text:countLine(),url:url}).catch(function(e){if(!isAbort(e))copyLink(url);});
+  }else copyLink(url);
+};
+function copyLink(url){
+  try{navigator.clipboard.writeText(url).then(function(){toast("Link copied");},function(){toast(url);});}
+  catch(e){toast(url);}
+}
+function countLine(){var sc=codesInScope();var n=state.visited.filter(function(c){return sc.indexOf(c)>=0;}).length;return n+" of "+sc.length+" states";}
+
+document.getElementById("shareImage").onclick=function(){
+  var btn=this;if(!gStates){toast("The map is still loading");return;}
+  btn.setAttribute("aria-busy","true");
+  makeImage().then(function(blob){
+    var name="fifty-stars.png",file;
+    try{file=new File([blob],name,{type:"image/png"});}catch(e){}
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+      return navigator.share({files:[file],title:document.title,text:countLine()+" · "+shareUrl()}).catch(function(e){if(!isAbort(e))return copyOrSave(blob,name);});
+    }
+    return copyOrSave(blob,name);
+  }).catch(function(e){console.error(e);toast("Couldn't make the image. Try again.");})
+    .then(function(){btn.removeAttribute("aria-busy");});
+};
+function copyOrSave(blob,name){
+  if(navigator.clipboard&&window.ClipboardItem){
+    return navigator.clipboard.write([new ClipboardItem({"image/png":blob})]).then(function(){toast("Image copied to clipboard");},function(){saveBlob(blob,name);});
+  }
+  saveBlob(blob,name);
+}
+function saveBlob(blob,name){
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);toast("Image saved");
+}
+
+// Draws a clean card of the map onto a canvas: title, count, map, west-to-east strip, list, link.
+function makeImage(){
+  var fontsReady=document.fonts&&document.fonts.load?Promise.all([
+    document.fonts.load('900 120px "Overpass"'),document.fonts.load('800 40px "Overpass"'),document.fonts.load('300 40px "Overpass"'),
+    document.fonts.load('400 16px "Overpass"'),document.fonts.load('600 16px "Overpass Mono"')]).catch(function(){}):Promise.resolve();
+  return fontsReady.then(function(){
+    var cs=getComputedStyle(document.documentElement),v=function(n){return cs.getPropertyValue(n).trim();};
+    var C={bg:v("--bg"),ink:v("--ink"),muted:v("--muted"),land:v("--land")};
+    var FD='"Overpass","Avenir Next","Segoe UI",system-ui,sans-serif',FM='"Overpass Mono",ui-monospace,Menlo,monospace';
+    var CW=1200,pad=64,S=2;
+    var scope=codesInScope(),visited=state.visited.filter(function(c){return scope.indexOf(c)>=0;});
+    var names=visited.map(function(c){return NAME[c];}).sort();
+    var meas=document.createElement("canvas").getContext("2d");meas.font="400 17px "+FD;
+    var listLines=state.list&&names.length?wrapText(meas,names.join(", "),CW-pad*2).slice(0,4):[];
+    var mapTop=230,mapH=Math.round((CW-pad*2)*H/W),ticksTop=mapTop+mapH+28,listTop=ticksTop+62;
+    var CH=listTop+(listLines.length?listLines.length*28+22:0)+64;
+    var cv=document.createElement("canvas");cv.width=CW*S;cv.height=CH*S;
+    var ctx=cv.getContext("2d");ctx.scale(S,S);
+    ctx.fillStyle=C.bg;ctx.fillRect(0,0,CW,CH);
+    // header
+    ctx.textBaseline="alphabetic";ctx.fillStyle=C.muted;ctx.font="600 14px "+FM;
+    if("letterSpacing" in ctx)ctx.letterSpacing="2px";
+    ctx.fillText("UNITED STATES · VISITED",pad,96);
+    if("letterSpacing" in ctx)ctx.letterSpacing="0px";
+    ctx.fillStyle=C.ink;ctx.font="800 40px "+FD;
+    ctx.fillText(fitText(ctx,(state.title||"").trim()||"States I've been to",CW-pad*2-380),pad,146);
+    ctx.textAlign="right";
+    ctx.font="300 46px "+FD;ctx.fillStyle=C.muted;var tot="/"+scope.length;ctx.fillText(tot,CW-pad,150);
+    var tw=ctx.measureText(tot).width;ctx.font="900 124px "+FD;ctx.fillStyle=C.ink;ctx.fillText(String(visited.length),CW-pad-tw-6,150);
+    ctx.font="400 15px "+FM;ctx.fillStyle=C.muted;ctx.fillText(Math.round(visited.length/scope.length*100)+"% of the map",CW-pad,182);
+    ctx.textAlign="left";
+    // map
+    var k=(CW-pad*2)/W;
+    ctx.save();ctx.translate(pad,mapTop);ctx.scale(k,k);ctx.lineJoin="round";ctx.lineWidth=1.1;ctx.strokeStyle=C.bg;
+    feats.forEach(function(f){var p=new Path2D(path(f.geo));ctx.fillStyle=isOn(f.code)?colorFor(f.code):C.land;ctx.fill(p);ctx.stroke(p);});
+    if(state.labels){
+      ctx.font="600 10.5px "+FM;ctx.textAlign="center";ctx.textBaseline="middle";
+      gLabels.selectAll("text").each(function(d){var on=isOn(d.code);ctx.globalAlpha=on?1:.55;ctx.fillStyle=on?inkOn(colorFor(d.code)):C.muted;ctx.fillText(d.code,+this.getAttribute("x"),+this.getAttribute("y")+1);});
+      ctx.globalAlpha=1;ctx.textAlign="left";ctx.textBaseline="alphabetic";
+    }
+    ctx.restore();
+    // west-to-east strip
+    var order=scope.filter(function(c){return T[c];}).sort(function(a,b){return T[a].t-T[b].t||T[a].cx-T[b].cx;});
+    var gap=4,tw2=(CW-pad*2-gap*(order.length-1))/order.length;
+    order.forEach(function(c,i){ctx.fillStyle=isOn(c)?colorFor(c):C.land;roundRect(ctx,pad+i*(tw2+gap),ticksTop,tw2,24,2.5);ctx.fill();});
+    ctx.font="600 12px "+FM;ctx.fillStyle=C.muted;if("letterSpacing" in ctx)ctx.letterSpacing="1.6px";
+    ctx.fillText("WEST",pad,ticksTop+46);ctx.textAlign="right";ctx.fillText("EAST",CW-pad,ticksTop+46);ctx.textAlign="left";
+    if("letterSpacing" in ctx)ctx.letterSpacing="0px";
+    // list
+    ctx.font="400 17px "+FD;ctx.fillStyle=C.muted;
+    listLines.forEach(function(line,i){ctx.fillText(line,pad,listTop+i*28+18);});
+    // footer
+    ctx.font="400 13px "+FM;ctx.fillStyle=C.muted;
+    var host=(location.host+location.pathname).replace(/index\.html$/,"").replace(/\/$/,"");
+    if(/^https?:$/.test(location.protocol)&&host)ctx.fillText(host,pad,CH-34);
+    return new Promise(function(res,rej){cv.toBlob(function(b){b?res(b):rej(new Error("toBlob failed"));},"image/png");});
+  });
+}
+function wrapText(ctx,text,maxW){
+  var words=text.split(" "),lines=[],cur="";
+  words.forEach(function(w){var t=cur?cur+" "+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t;});
+  if(cur)lines.push(cur);return lines;
+}
+function fitText(ctx,text,maxW){if(ctx.measureText(text).width<=maxW)return text;while(text.length>1&&ctx.measureText(text+"…").width>maxW)text=text.slice(0,-1);return text+"…";}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+render();
+getTopo().then(build).catch(function(err){
+  var s=document.getElementById("status");if(s)s.textContent="Couldn't load the map shapes. Check your connection and reload.";
+  console.error(err);
+});
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function (e) { console.warn("SW registration failed", e); });
+  });
+}
+</script>
+</body>
+</html>
