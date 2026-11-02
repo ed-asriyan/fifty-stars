@@ -43,28 +43,49 @@
 :root[data-theme="dark"]{
   --bg:#0f1218;--ink:#eef0f4;--muted:#7d8494;--land:#1d222c;--land-hover:#272d39;--line:#232935;--sheet:#161a22;--scrim:rgba(0,0,0,.55);--focus:#7fa8ff;--danger:#ff7a63;color-scheme:dark}
 
-html,body{min-height:100%}
+html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-display);-webkit-font-smoothing:antialiased;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.wrap{max-width:1080px;margin:0 auto;padding-block:clamp(20px,5vw,56px) 28px;display:flex;flex-direction:column;gap:clamp(14px,2.4vw,26px)}
+/* The first screen is the whole app at every size: header on top, strip and buttons at the bottom, the map takes what is left and sits centred in it. */
+.wrap{--pad-top:clamp(16px,3.2vh,32px);--pad-bottom:22px;max-width:1080px;margin:0 auto;padding-block:var(--pad-top) var(--pad-bottom);display:flex;flex-direction:column;gap:clamp(12px,1.9vh,18px);box-sizing:border-box}
+.screen{display:flex;flex-direction:column;gap:inherit;min-height:calc(100svh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--pad-top) - var(--pad-bottom))}
 
 header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
 .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 h1{margin:6px 0 0;font-weight:800;font-size:clamp(22px,3.4vw,34px);letter-spacing:-.01em;text-wrap:balance;line-height:1.05}
 .count{display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums;line-height:.8}
-.count b{font-weight:900;font-size:clamp(64px,12vw,128px);letter-spacing:-.04em}
+.count b{font-weight:900;font-size:clamp(56px,min(12vw,11vh),120px);letter-spacing:-.04em}
 .count span{font-weight:300;font-size:clamp(26px,4.4vw,46px);color:var(--muted)}
 .pct{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right;margin-top:8px;font-variant-numeric:tabular-nums}
 
-.map{position:relative;width:100%}
-.map svg{display:block;width:100%;height:auto;overflow:visible}
-.st{fill:var(--land);stroke:var(--bg);stroke-width:1.1;stroke-linejoin:round;cursor:pointer;transition:fill .45s ease}
-.st:hover{fill:var(--land-hover)}
-.st.on:hover{filter:brightness(1.06) saturate(1.05)}
+.map{position:relative;width:100%;flex:1 1 auto;min-height:320px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.map>svg{position:absolute;inset:0;display:block;width:100%;height:100%;overflow:hidden}
+.map.zoomed>svg{cursor:grab}
+.map.zoomed.dragging>svg{cursor:grabbing}
+.st{fill:var(--land);stroke:var(--bg);stroke-width:1.1;stroke-linejoin:round;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill .45s ease}
+@media (hover:hover){.st:hover{fill:var(--land-hover)}.st.on:hover{filter:brightness(1.06) saturate(1.05)}}
 .st:focus{outline:none}
 .st:focus-visible{stroke:var(--focus);stroke-width:2.2}
-.lbl{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;pointer-events:none;text-anchor:middle;dominant-baseline:central}
-.ripple{fill:none;stroke-width:2;pointer-events:none}
+.lbl{font-family:var(--f-mono);font-weight:600;letter-spacing:.04em;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.ripple{fill:none;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none}
+.zoomctl{position:absolute;right:max(8px,env(safe-area-inset-right,0px));bottom:8px;display:flex;flex-direction:column;gap:6px;z-index:2;transition:opacity .25s}
+.zbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.zbtn svg{width:18px;height:18px;display:block}
+.zhint{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--muted);pointer-events:none;transition:opacity .3s}
+@media (pointer:fine){.zhint{display:none}}
+.map.zoomed .zhint,body.clean .zhint,.map.used .zhint{opacity:0}
+.zbtn:disabled{opacity:.35;cursor:default}
+.zbtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+body.clean .zoomctl{opacity:0}
+body.clean .map:hover .zoomctl,body.clean .zoomctl:focus-within{opacity:1}
+/* Phone, portrait: the first screen is the whole app. The map takes the space that is left and sits centred in it; the list goes below. */
+@media (max-width:700px) and (orientation:portrait){
+  .wrap{--pad-top:14px;--pad-bottom:20px;gap:12px}
+  .map{min-height:260px;width:auto;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px))) calc(-1 * max(16px,env(safe-area-inset-right,0px)))}
+  .zoomctl{right:max(12px,env(safe-area-inset-right,0px))}
+  footer{gap:6px}
+  footer .btn{padding:10px 12px 8px;gap:6px}
+}
 .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;font-weight:600;padding:5px 8px 3px;border-radius:6px;white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));opacity:0;transition:opacity .12s}
 .tip.show{opacity:1}
 .status{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center;padding:80px 0}
@@ -72,7 +93,7 @@ h1{margin:6px 0 0;font-weight:800;font-size:clamp(22px,3.4vw,34px);letter-spacin
 .ticks{display:flex;gap:3px;height:22px}
 .ticks i{flex:1;border-radius:2px;background:var(--land);transition:background .45s ease,transform .3s ease}
 .ticks i.on{transform:scaleY(1)}
-.legend{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:-14px}
+.legend{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:-8px}
 .visited{font-size:13px;line-height:1.7;color:var(--muted);max-width:80ch}
 .visited strong{color:var(--ink);font-weight:600}
 
@@ -120,6 +141,7 @@ textarea{font-family:var(--f-mono);font-size:12px;min-height:84px;resize:vertica
 </head>
 <body>
 <div class="wrap" id="app">
+ <div class="screen">
   <div class="banner" id="banner" hidden>
     <span>You're looking at a shared map. Changes here aren't saved.</span>
     <span class="row">
@@ -138,13 +160,19 @@ textarea{font-family:var(--f-mono);font-size:12px;min-height:84px;resize:vertica
     </div>
   </header>
 
-  <div class="map" id="map"><div class="status" id="status">Loading map…</div><div class="tip" id="tip"></div></div>
+  <div class="map" id="map"><div class="status" id="status">Loading map…</div><div class="tip" id="tip"></div>
+    <div class="zhint" id="zhint" hidden>Pinch to zoom · tap a state</div>
+    <div class="zoomctl" id="zoomctl" hidden>
+      <button class="zbtn" id="zIn" type="button" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="zbtn" id="zOut" type="button" aria-label="Zoom out" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+      <button class="zbtn" id="zReset" type="button" aria-label="Show the whole map" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+  </div>
 
   <div>
     <div class="ticks" id="ticks" aria-hidden="true"></div>
   </div>
   <div class="legend" aria-hidden="true"><span>West</span><span>East</span></div>
-  <p class="visited" id="list"></p>
 
   <footer>
     <button class="btn" id="shareLink" type="button">
@@ -160,6 +188,8 @@ textarea{font-family:var(--f-mono);font-size:12px;min-height:84px;resize:vertica
       Settings
     </button>
   </footer>
+ </div>
+  <p class="visited" id="list"></p>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -340,27 +370,130 @@ function build(list){
     var x=f.code==="AK"?x0-30:f.code==="HI"?x0-10:i.cx;
     i.t=clamp((x-x0)/(x1-x0),0,1);});
   document.getElementById("status").remove();
-  svg=d3.select(mapEl).insert("svg",".tip").attr("viewBox","0 0 "+W+" "+H).attr("role","group").attr("aria-label","Map of US states. Select a state to mark it visited.");
-  gStates=svg.append("g");gFx=svg.append("g");gLabels=svg.append("g");
+  svg=d3.select(mapEl).insert("svg",".tip").attr("viewBox","0 0 "+W+" "+H).attr("preserveAspectRatio","xMidYMid meet").attr("role","group").attr("aria-label","Map of US states. Select a state to mark it visited. Pinch or use the zoom buttons to zoom.");
+  gZoom=svg.append("g");gStates=gZoom.append("g");gFx=gZoom.append("g");gLabels=gZoom.append("g");
   gStates.selectAll("path").data(feats).enter().append("path")
     .attr("class","st").attr("d",function(d){return path(d.geo);})
     .attr("tabindex",0).attr("role","button")
     .attr("aria-label",function(d){return NAME[d.code];})
-    .on("click",function(d){toggle(d.code,true);})
     .on("keydown",function(d){var e=d3.event;if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(d.code,true);}})
-    .on("mousemove",function(d){var r=mapEl.getBoundingClientRect(),e=d3.event;tip.textContent=NAME[d.code]+(isOn(d.code)?" ✓":"");tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.classList.add("show");})
+    .on("mousemove",function(d){if(gesture&&gesture.moved){tip.classList.remove("show");return;}var r=mapEl.getBoundingClientRect(),e=d3.event;tip.textContent=NAME[d.code]+(isOn(d.code)?" ✓":"");tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.classList.add("show");})
     .on("mouseleave",function(){tip.classList.remove("show");});
-  gLabels.selectAll("text").data(feats.filter(function(d){return T[d.code].area>900;})).enter().append("text")
+  gLabels.selectAll("text").data(feats).enter().append("text")
     .attr("class","lbl").attr("x",function(d){return T[d.code].cx+(d.code==="FL"?14:d.code==="LA"?-10:d.code==="MI"?12:0);})
     .attr("y",function(d){return T[d.code].cy+(d.code==="MI"?18:0);}).text(function(d){return d.code;});
+  initZoom();
   render();
+}
+
+// ---------- zoom and pan ----------
+// The svg keeps a fixed viewBox (meet), so on a tall phone box the map sits centred with room around it.
+// gZoom carries translate(x,y) scale(k) in viewBox units; panning may use the whole box, not just the viewBox.
+var MAXK=8,view={k:1,x:0,y:0},gZoom,pts={},gesture=null,zoomAnim=0;
+function toUser(cx,cy){var n=svg.node(),pt=n.createSVGPoint();pt.x=cx;pt.y=cy;return pt.matrixTransform(n.getScreenCTM().inverse());}
+function visRect(){var r=svg.node().getBoundingClientRect(),a=toUser(r.left,r.top),b=toUser(r.right,r.bottom);return {x0:a.x,y0:a.y,x1:b.x,y1:b.y};}
+function clampView(){
+  var v=visRect(),vw=v.x1-v.x0,vh=v.y1-v.y0,cw=W*view.k,ch=H*view.k;
+  view.x=cw<=vw?v.x0+(vw-cw)/2:clamp(view.x,v.x1-cw,v.x0);
+  view.y=ch<=vh?v.y0+(vh-ch)/2:clamp(view.y,v.y1-ch,v.y0);
+}
+function applyView(){
+  if(!gZoom)return;
+  clampView();
+  gZoom.attr("transform",view.k===1&&Math.abs(view.x)<.01&&Math.abs(view.y)<.01?null:"translate("+view.x+","+view.y+") scale("+view.k+")");
+  var zoomed=view.k>1.001;
+  mapEl.classList.toggle("zoomed",zoomed);
+  if(zoomed)mapEl.classList.add("used");
+  document.getElementById("zReset").hidden=!zoomed;
+  document.getElementById("zOut").disabled=!zoomed;
+  document.getElementById("zIn").disabled=view.k>=MAXK-.001;
+  updateLabels();
+}
+function updateLabels(){
+  if(!gLabels)return;
+  // Labels keep a steady on-screen size (about 9-11.5px) at any zoom and box size.
+  var ctm=svg.node().getScreenCTM(),sc=(ctm?ctm.a:1)*view.k,px=clamp(10.5*(ctm?ctm.a:1),9,11.5);
+  gLabels.style("font-size",(px/sc)+"px");
+  // A state shows its code once it is big enough on screen to hold it.
+  gLabels.selectAll("text").style("display",function(d){return T[d.code].area*sc*sc>1000?null:"none";});
+}
+function zoomAt(px,py,f){
+  var nk=clamp(view.k*f,1,MAXK);
+  view.x=px-(px-view.x)*nk/view.k;view.y=py-(py-view.y)*nk/view.k;view.k=nk;applyView();
+}
+function animateZoom(targetK,px,py){
+  cancelAnimationFrame(zoomAnim);
+  if(px==null){var v=visRect();px=(v.x0+v.x1)/2;py=(v.y0+v.y1)/2;}
+  var k0=view.k,k1=clamp(targetK,1,MAXK),t0=performance.now(),dur=matchMedia("(prefers-reduced-motion: reduce)").matches?0:220;
+  (function step(now){
+    var t=dur?Math.min(1,(now-t0)/dur):1,e=1-Math.pow(1-t,3);
+    var k=k0*Math.pow(k1/k0,e);zoomAt(px,py,k/view.k);
+    if(t<1)zoomAnim=requestAnimationFrame(step);
+  })(t0);
+}
+function initZoom(){
+  var node=svg.node();
+  document.getElementById("zoomctl").hidden=false;
+  document.getElementById("zhint").hidden=false;
+  document.getElementById("zIn").onclick=function(){animateZoom(view.k*2);};
+  document.getElementById("zOut").onclick=function(){animateZoom(view.k/2);};
+  document.getElementById("zReset").onclick=function(){animateZoom(1);};
+  node.addEventListener("pointerdown",function(e){
+    if(e.pointerType==="mouse"&&e.button!==0)return;
+    cancelAnimationFrame(zoomAnim);
+    try{node.setPointerCapture(e.pointerId);}catch(_){}
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(Object.keys(pts).length===1){
+      var d=e.target&&e.target.__data__;
+      gesture={sx:e.clientX,sy:e.clientY,t:Date.now(),moved:false,multi:false,code:d&&e.target.classList.contains("st")?d.code:null};
+    }else if(gesture){gesture.multi=true;gesture.moved=true;}
+  });
+  node.addEventListener("pointermove",function(e){
+    var prev=pts[e.pointerId];if(!prev)return;
+    var cur={x:e.clientX,y:e.clientY};pts[e.pointerId]=cur;
+    if(gesture&&!gesture.moved&&Math.hypot(cur.x-gesture.sx,cur.y-gesture.sy)>8){gesture.moved=true;tip.classList.remove("show");}
+    var ids=Object.keys(pts);
+    if(ids.length>=2){
+      var a=pts[ids[0]],b=pts[ids[1]],pa=String(e.pointerId)===ids[0]?prev:a,pb=String(e.pointerId)===ids[1]?prev:b;
+      var ua=toUser(a.x,a.y),ub=toUser(b.x,b.y),qa=toUser(pa.x,pa.y),qb=toUser(pb.x,pb.y);
+      var dNow=Math.hypot(ua.x-ub.x,ua.y-ub.y),dPrev=Math.hypot(qa.x-qb.x,qa.y-qb.y);
+      var m={x:(ua.x+ub.x)/2,y:(ua.y+ub.y)/2},pm={x:(qa.x+qb.x)/2,y:(qa.y+qb.y)/2};
+      view.x+=m.x-pm.x;view.y+=m.y-pm.y;
+      if(dPrev>0)zoomAt(m.x,m.y,dNow/dPrev);else applyView();
+    }else if(gesture&&gesture.moved){
+      var u=toUser(cur.x,cur.y),pu=toUser(prev.x,prev.y);
+      view.x+=u.x-pu.x;view.y+=u.y-pu.y;applyView();
+      mapEl.classList.add("dragging");
+    }
+  });
+  function end(e){
+    if(!pts[e.pointerId])return;
+    delete pts[e.pointerId];
+    if(Object.keys(pts).length)return;
+    mapEl.classList.remove("dragging");
+    if(e.type==="pointerup"&&gesture&&!gesture.moved&&gesture.code&&Date.now()-gesture.t<700)toggle(gesture.code,true);
+    gesture=null;
+  }
+  node.addEventListener("pointerup",end);
+  node.addEventListener("pointercancel",end);
+  // Trackpad pinch (and Ctrl/Cmd + wheel) zooms; a plain wheel keeps scrolling the page.
+  node.addEventListener("wheel",function(e){
+    if(!(e.ctrlKey||e.metaKey))return;
+    e.preventDefault();var u=toUser(e.clientX,e.clientY);zoomAt(u.x,u.y,Math.exp(-e.deltaY*.01));
+  },{passive:false});
+  // Safari on macOS sends its own gesture events for trackpad pinch.
+  var gScale=1;
+  node.addEventListener("gesturestart",function(e){e.preventDefault();gScale=1;});
+  node.addEventListener("gesturechange",function(e){e.preventDefault();var u=toUser(e.clientX,e.clientY);zoomAt(u.x,u.y,e.scale/gScale);gScale=e.scale;});
+  window.addEventListener("resize",applyView);
+  applyView();
 }
 
 function ripple(code){
   if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
   var i=T[code],col=colorFor(code);
-  gFx.append("circle").attr("class","ripple").attr("cx",i.cx).attr("cy",i.cy).attr("r",4).style("stroke",col).style("opacity",.9)
-    .transition().duration(700).ease("cubic-out").attr("r",46).style("opacity",0).remove();
+  gFx.append("circle").attr("class","ripple").attr("cx",i.cx).attr("cy",i.cy).attr("r",4/view.k).style("stroke",col).style("opacity",.9)
+    .transition().duration(700).ease("cubic-out").attr("r",46/view.k).style("opacity",0).remove();
 }
 
 function toggle(code,fx){
@@ -556,7 +689,7 @@ function makeImage(){
     feats.forEach(function(f){var p=new Path2D(path(f.geo));ctx.fillStyle=isOn(f.code)?colorFor(f.code):C.land;ctx.fill(p);ctx.stroke(p);});
     if(state.labels){
       ctx.font="600 10.5px "+FM;ctx.textAlign="center";ctx.textBaseline="middle";
-      gLabels.selectAll("text").each(function(d){var on=isOn(d.code);ctx.globalAlpha=on?1:.55;ctx.fillStyle=on?inkOn(colorFor(d.code)):C.muted;ctx.fillText(d.code,+this.getAttribute("x"),+this.getAttribute("y")+1);});
+      gLabels.selectAll("text").each(function(d){if(T[d.code].area<=900)return;var on=isOn(d.code);ctx.globalAlpha=on?1:.55;ctx.fillStyle=on?inkOn(colorFor(d.code)):C.muted;ctx.fillText(d.code,+this.getAttribute("x"),+this.getAttribute("y")+1);});
       ctx.globalAlpha=1;ctx.textAlign="left";ctx.textBaseline="alphabetic";
     }
     ctx.restore();

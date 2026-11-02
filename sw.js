@@ -1,5 +1,5 @@
 // Fifty Stars service worker: app shell precached, CDN libraries and fonts cached on first use.
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = `runtime-${VERSION}`;
 const SHELL_FILES = [

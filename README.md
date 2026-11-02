@@ -17,7 +17,9 @@
 
 ## Features
 
-- **Click to mark.** Click or tap a state, or use the state list in Settings for the small ones (Rhode Island, Delaware, D.C.).
+- **Click to mark.** Click or tap a state, or use the state list in Settings.
+- **Zoom in for the small states.** Pinch on a phone, pinch on a trackpad, Ctrl/Cmd + scroll, or the + and − buttons. Drag to move around. A tap only marks a state when your finger didn't move, so panning and pinching never toggle anything by accident. State codes stay the same size on screen and the small states get theirs once they're big enough.
+- **One screen.** On any device the title, the map, the colour strip and the buttons fit in the first screen; the map takes the space that's left and sits centred in it.
 - **Each state its own colour.** A state's colour comes from the palette gradient by how far east it is, with a small fixed variation per state so neighbours never blend. The strip under the map shows the same colours in west-to-east order.
 - **The link is the map.** The URL hash always reflects your current map, for example `#v=CA.OR.WA&p=pacific`. Send it to anyone and they see exactly your map.
 - **Share link** opens the system share sheet on phones and copies the link on desktop.
@@ -29,9 +31,11 @@
 - **Backup and restore** your map as a short JSON snippet.
 
 <p align="center">
-  <img src="docs/screenshot-mobile.png" alt="Fifty Stars on a phone" width="300">
-  &nbsp;&nbsp;
-  <img src="docs/settings-mobile.png" alt="Settings sheet with palettes and the state list" width="300">
+  <img src="docs/screenshot-mobile.png" alt="Fifty Stars on a phone, the map centred on the screen" width="260">
+  &nbsp;
+  <img src="docs/zoomed-mobile.png" alt="Zoomed in on New England with Rhode Island and Massachusetts marked" width="260">
+  &nbsp;
+  <img src="docs/settings-mobile.png" alt="Settings sheet with palettes, theme and the state list" width="260">
 </p>
 
 ### The shareable image
@@ -72,6 +76,7 @@ It's a single static `index.html` with no build step.
 - **Map:** [d3 v3](https://github.com/d3/d3/tree/v3.5.17) draws the states with the `albersUsa` projection, which places Alaska and Hawaii as insets. State shapes come from the TopoJSON bundled with [Datamaps 0.5.9](https://github.com/markmarkoh/datamaps); if that isn't available the page falls back to [us-atlas](https://github.com/topojson/us-atlas) (Census Bureau 2017 boundaries).
 - **Colour:** each state's centroid longitude gives a position `t` from 0 (west) to 1 (east). `t` is nudged by a hash of the state code, then mapped through the palette stops with Lab interpolation, and lightness and saturation get their own small hashed offsets. The result is stable between visits and different for every state.
 - **Storage:** `localStorage` key `fifty-stars:v1`.
+- **Zoom:** written on Pointer Events rather than d3's zoom behaviour, so a tap and a drag are told apart explicitly. The map group carries `translate(x,y) scale(k)` in viewBox units, clamped so the map can't be dragged out of its box; borders use `vector-effect: non-scaling-stroke`. The map box has `touch-action: none` so the browser doesn't zoom the whole page.
 - **Image:** the share card is drawn on a `<canvas>` from the same SVG paths and exported at 2× as PNG, then passed to the Web Share API (`navigator.share({ files })`), the async Clipboard API, or a download, in that order.
 - **Offline:** `sw.js` uses network-first for the page, cache-first for the pinned CDN files and fonts, and stale-while-revalidate for its own assets.
 
