@@ -1,7 +1,7 @@
 {
   "name": "Fifty Stars",
   "short_name": "Fifty Stars",
-  "description": "Mark the US states you've been to. Saved in your browser, no sign-up.",
+  "description": "Mark the US states and the countries you've been to. Saved in your browser, no sign-up.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
